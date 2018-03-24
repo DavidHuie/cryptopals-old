@@ -23,7 +23,6 @@ func TestChallenge6(t *testing.T) {
 	}
 
 	size := DetectKeySize(bytes, 40)
-	fmt.Println("key size:", size)
 	blocks := make([][]byte, size)
 
 	for i, b := range bytes {
@@ -35,11 +34,12 @@ func TestChallenge6(t *testing.T) {
 	for _, block := range blocks {
 		var winner byte
 		var highScore int
+		// var plaintext []byte
 
 		for i := 0; i <= 255; i++ {
 			candidateByte := i
 			var candidate []byte
-			for j := 0; j < len(bytes); j++ {
+			for j := 0; j < len(block); j++ {
 				candidate = append(candidate, byte(candidateByte))
 			}
 
@@ -48,8 +48,9 @@ func TestChallenge6(t *testing.T) {
 				new(big.Int).SetBytes(candidate),
 			).Bytes()
 
-			score := VowelFrequencyScore(string(pt))
+			score := AlphabetFrequencyScore(string(pt))
 			if score >= highScore {
+				// plaintext = pt
 				winner = byte(candidateByte)
 				highScore = score
 			}
@@ -59,5 +60,5 @@ func TestChallenge6(t *testing.T) {
 	}
 
 	fmt.Println("key:", string(key))
-	// fmt.Println(string(EncryptWithRepeatingXOR(string(bytes), string(key))))
+	fmt.Println(string(EncryptWithRepeatingXOR(string(bytes), string(key))))
 }

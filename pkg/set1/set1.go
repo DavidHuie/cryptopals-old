@@ -113,12 +113,16 @@ func HammingDistance(b1, b2 []byte) int {
 func DetectKeySize(ct []byte, keysizes int) int {
 	var winner int
 	highScore := float64(8)
-	for size := 2; size <= keysizes; size++ {
+	for size := 4; size <= keysizes; size++ {
 		block1 := ct[:size]
 		block2 := ct[size : 2*size]
+		block3 := ct[2*size : 3*size]
+		block4 := ct[3*size : 4*size]
 
-		distance := HammingDistance(block1, block2)
-		normalized := float64(distance) / float64(size)
+		distance := HammingDistance(block1, block2) +
+			HammingDistance(block2, block3) +
+			HammingDistance(block3, block4)
+		normalized := float64(distance) / (3 * float64(size))
 
 		if normalized < highScore {
 			highScore = normalized
@@ -126,7 +130,8 @@ func DetectKeySize(ct []byte, keysizes int) int {
 		}
 	}
 
-	fmt.Printf("score: %f\n", highScore)
+	fmt.Println(highScore)
+	fmt.Println(winner)
 
 	return winner
 }
