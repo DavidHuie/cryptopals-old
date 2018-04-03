@@ -84,6 +84,42 @@ func TestChallenge10(t *testing.T) {
 
 	mode := crypto.NewCBCDecrypter(cipher, iv)
 	out := crypto.CBCProcess(ct, mode)
-	a
+
 	t.Logf("out: %s", string(out))
+}
+
+func TestECBEncrypt(t *testing.T) {
+	key := make([]byte, 16)
+	if _, err := rand.Read(key); err != nil {
+		t.Fatal(err)
+	}
+
+	plaintext := "this is so fun!"
+	ptBytes := crypto.PadWithPKCS7([]byte(plaintext), 16)
+	pt := make([]byte, 2*16)
+	copy(pt[0:16], ptBytes)
+	copy(pt[16:], ptBytes)
+
+	t.Logf("original plaintext: %x", pt)
+
+	ct := crypto.ECBEncrypt(pt, key)
+
+	t.Logf("ciphertext: %x", ct)
+
+	ptOut := crypto.ECBDecrypt(ct, key)
+
+	t.Logf("plaintext: %x", ptOut)
+	t.Logf("plaintext length: %d", len(ptOut))
+
+	if bytes.Compare(ptOut, pt) != 0 {
+		t.Fatal("bufs should match")
+	}
+}
+
+func TestCBCECBEncryptionOracle(t *testing.T) {
+	for i := 0; i < 1000; i++ {
+		b := crypto.GetRandBytes(64)
+		output := crypto.CBCECBEncryptionOracle(b)
+		t.Logf("%x", output)
+	}
 }
