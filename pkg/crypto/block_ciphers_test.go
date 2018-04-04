@@ -119,7 +119,23 @@ func TestECBEncrypt(t *testing.T) {
 func TestCBCECBEncryptionOracle(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		b := crypto.GetRandBytes(64)
-		output := crypto.CBCECBEncryptionOracle(b)
-		t.Logf("%x", output)
+		crypto.CBCECBEncryptionOracle(b)
 	}
+}
+
+func TestChallenge11(t *testing.T) {
+	for i := 0; i < 100; i++ {
+		s := crypto.GetRepeatedChar('s', 2*160)
+		ciphertext, kind := crypto.CBCECBEncryptionOracle(s)
+		detected := crypto.DetectEncryptionMode(ciphertext)
+
+		if detected != kind {
+			t.Fatalf("wrong kind detected: %s, expected: %s", detected, kind)
+		}
+	}
+}
+
+func TestChallenge12(t *testing.T) {
+	pt := crypto.ByteAtATimeECBDecrypt()
+	fmt.Println(string(pt))
 }

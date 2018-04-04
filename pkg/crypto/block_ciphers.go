@@ -4,6 +4,8 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"encoding/base64"
+	"fmt"
 	"math/big"
 )
 
@@ -96,6 +98,9 @@ func ECBEncrypt(ct []byte, key []byte) []byte {
 	if err != nil {
 		panic(cipher)
 	}
+	if len(ct)%16 != 0 {
+		ct = PadWithPKCS7(ct, len(ct)+(16-len(ct)/16))
+	}
 
 	var out []byte
 	for i := 0; i < len(ct); i += 16 {
@@ -139,7 +144,15 @@ func GetRandInt(max int) int {
 	return int(rint.Int64())
 }
 
-func CBCECBEncryptionOracle(pt []byte) []byte {
+func GetRepeatedChar(s rune, num int) []byte {
+	var b []byte
+	for i := 0; i < num; i++ {
+		b = append(b, byte(s))
+	}
+	return b
+}
+
+func CBCECBEncryptionOracle(pt []byte) ([]byte, string) {
 	useCBC := false
 	if GetRandInt(2) == 0 {
 		useCBC = true
@@ -161,8 +174,64 @@ func CBCECBEncryptionOracle(pt []byte) []byte {
 			panic(err)
 		}
 		encrypter := NewCBCEncrypter(cipher, GetRandBytes(16))
-		return CBCProcess(changed, encrypter)
+		return CBCProcess(changed, encrypter), "cbc"
 	}
 
-	return ECBEncrypt(changed, GetRandBytes(16))
+	return ECBEncrypt(changed, GetRandBytes(16)), "ecb"
+}
+
+func DetectEncryptionMode(ct []byte) string {
+	blocks := len(ct) / 16
+	for i := 0; i < blocks-1; i++ {
+		dist := HammingDistance(ct[i:i+16], ct[i+16:i+32])
+		if dist == 0 {
+			return "ecb"
+		}
+	}
+
+	return "cbc"
+}
+
+var challenge12Key []byte
+
+func Challenge12EncryptionOracle(pt []byte) []byte {
+	if len(challenge12Key) == 0 {
+		challenge12Key = GetRandBytes(16)
+	}
+
+	s := `Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkg
+aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq
+dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg
+YnkK`
+	b, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		panic(err)
+	}
+
+	return ECBEncrypt(append(pt, b...), challenge12Key)
+}
+
+func ByteAtATimeECBDecrypt() (pt []byte) {
+	size := len(Challenge12EncryptionOracle(nil))
+
+	for i := 0; i < size; i++ {
+		tester := GetRepeatedChar('a', size-1-i)
+		prefix := append(tester, pt...)
+		dict := make(map[string]byte)
+
+		for i := 0; i < 256; i++ {
+			buf := append(prefix, byte(i))
+			ct := Challenge12EncryptionOracle(buf)
+			block := ct[size-16 : size]
+			dict[fmt.Sprintf("%x", block)] = byte(i)
+		}
+
+		ct := Challenge12EncryptionOracle(tester)
+		block := ct[size-16 : size]
+		b := dict[fmt.Sprintf("%x", block)]
+		pt = append(pt, b)
+
+	}
+
+	return
 }

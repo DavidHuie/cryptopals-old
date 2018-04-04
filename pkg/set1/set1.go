@@ -77,7 +77,6 @@ func AlphabetFrequencyScore(s string) int {
 	}
 
 	return score
-	p
 }
 
 func EncryptWithRepeatingXOR(s, key string) []byte {
